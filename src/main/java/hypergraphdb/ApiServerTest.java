@@ -10,7 +10,7 @@ public class ApiServerTest {
     private static final String DB_PATH = "db/usersDB";
     private static final Gson gson = new Gson();
 
-    // 🟢 Lưu user đăng nhập tạm thời
+    // Lưu user đăng nhập tạm thời
     private static User currentUser = null;
 
     public static void main(String[] args) {
@@ -24,7 +24,7 @@ public class ApiServerTest {
         });
         options("/*", (req, res) -> "OK");
 
-        // 🟢 API kiểm tra server
+        // API kiểm tra server
         get("/api/hello", (req, res) -> {
             res.type("application/json");
             Map<String, String> data = new HashMap<>();
@@ -32,14 +32,14 @@ public class ApiServerTest {
             return gson.toJson(data);
         });
 
-        // 🟢 API xem danh sách user
+        //API xem danh sách user
         get("/api/users", (req, res) -> {
             res.type("application/json");
             List<User> users = graph.getAll(hg.type(User.class));
             return gson.toJson(users);
         });
 
-        // 🟢 API đăng ký
+        //API đăng ký
         post("/api/register", (req, res) -> {
             res.type("application/json");
             Map<String, Object> body = gson.fromJson(req.body(), Map.class);
@@ -66,7 +66,7 @@ public class ApiServerTest {
             return gson.toJson(resp);
         });
 
-        // 🟠 API đăng nhập
+        //API đăng nhập
         post("/api/login", (req, res) -> {
             res.type("application/json");
             Map<String, Object> body = gson.fromJson(req.body(), Map.class);
@@ -95,7 +95,7 @@ public class ApiServerTest {
             return gson.toJson(err);
         });
 
-        // 🟢 API lấy user hiện tại
+        //API lấy user hiện tại
         get("/api/currentUser", (req, res) -> {
             res.type("application/json");
             if (currentUser != null) {
@@ -116,7 +116,7 @@ public class ApiServerTest {
             }
         });
 
-        // 🔴 API đăng xuất
+        //API đăng xuất
         post("/api/logout", (req, res) -> {
             currentUser = null;
             Map<String, String> msg = new HashMap<>();
@@ -124,10 +124,10 @@ public class ApiServerTest {
             return gson.toJson(msg);
         });
 
-        // 🔒 Đóng DB khi tắt server
+        //Đóng DB khi tắt server
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             graph.close();
-            System.out.println("🔒 Đã đóng HyperGraphDB");
+            System.out.println("ã đóng HyperGraphDB");
         }));
     }
 }
