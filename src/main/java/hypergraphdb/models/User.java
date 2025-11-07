@@ -1,4 +1,4 @@
-package hypergraphdb;
+package hypergraphdb.models;
 
 public class User {
     private String name;
