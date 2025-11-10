@@ -642,6 +642,61 @@ public class ApiServer {
             return gson.toJson(resp);
         });
 
+        //=========================KẾT HỢP==============================
+        // API: Lấy chi tiết 1 tour kèm thông tin nhà tổ chức
+        get("/api/tour/:id", (req, res) -> {
+            res.type("application/json");
+            String id = req.params(":id");
+
+            // Lấy danh sách tour và nhà tổ chức
+            List<Tour> tours = graph.getAll(hg.type(Tour.class));
+            List<NhaToChuc> nhaToChucs = graph.getAll(hg.type(NhaToChuc.class));
+
+            for (Tour t : tours) {
+                if (t.getId() != null && t.getId().equalsIgnoreCase(id)) {
+
+                    // Tìm nhà tổ chức tương ứng
+                    NhaToChuc foundNTC = null;
+                    for (NhaToChuc ntc : nhaToChucs) {
+                        if (ntc.getId() != null && ntc.getId().equalsIgnoreCase(t.getNhaToChucId())) {
+                            foundNTC = ntc;
+                            break;
+                        }
+                    }
+
+                    Map<String, Object> tour = new HashMap<>();
+                    tour.put("id", t.getId());
+                    tour.put("tenTour", t.getTenTour());
+                    tour.put("moTa", t.getMoTa());
+                    tour.put("gia", t.getGia());
+                    tour.put("thoiGian", t.getThoiGian());
+                    tour.put("noiKhoiHanh", t.getDiemKhoiHanh());
+                    tour.put("diemDen", t.getDiemDen());
+                    tour.put("phuongTien", t.getPhuongTien());
+                    tour.put("hinhAnh", t.getHinhAnh());
+
+                    if (foundNTC != null) {
+                        Map<String, Object> ntcInfo = new HashMap<>();
+                        ntcInfo.put("id", foundNTC.getId());
+                        ntcInfo.put("ten", foundNTC.getTen());
+                        ntcInfo.put("email", foundNTC.getEmail());
+                        ntcInfo.put("soDienThoai", foundNTC.getSdt());
+                        ntcInfo.put("diaChi", foundNTC.getDiaChi());
+                        tour.put("nhaToChuc", ntcInfo);
+                    } else {
+                        tour.put("nhaToChuc", null);
+                    }
+
+                    return gson.toJson(tour);
+                }
+            }
+
+            res.status(404);
+            Map<String, String> err = new HashMap<>();
+            err.put("message", "Tour không tìm thấy");
+            return gson.toJson(err);
+        });
+
 
         //==========================ĐÓNG SERVER=========================
         //Đóng DB khi tắt server
