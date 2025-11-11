@@ -11,6 +11,10 @@ import org.hypergraphdb.HGQuery.hg;
 import org.hypergraphdb.HyperGraph;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
 import hypergraphdb.models.DanhGia;
 import hypergraphdb.models.DatTour;
@@ -603,12 +607,81 @@ public class ApiServer {
 
         post("/api/dattour", (req, res) -> {
             res.type("application/json");
-            DatTour dt = gson.fromJson(req.body(), DatTour.class);
-            graph.add(dt);
-            Map<String, String> resp = new HashMap<>();
-            resp.put("message", "Đã đặt tour thành công!");
-            return gson.toJson(resp);
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                // Debug để kiểm tra JSON thực nhận
+                String body = req.body();
+                System.out.println("=== Body nhận được từ Laravel ===");
+                System.out.println(body);
+
+                // Khởi tạo Gson hỗ trợ LocalDate
+                Gson gson = new GsonBuilder()
+                    .registerTypeAdapter(LocalDate.class, (JsonDeserializer<LocalDate>) (json, type, ctx) -> LocalDate.parse(json.getAsString()))
+                    .registerTypeAdapter(LocalDate.class, (JsonSerializer<LocalDate>) (src, type, ctx) -> new JsonPrimitive(src.toString()))
+                    .setPrettyPrinting()
+                    .create();
+
+                // Parse JSON thành DatTour
+                DatTour dt = gson.fromJson(body, DatTour.class);
+
+                if (dt == null) {
+                    res.status(400);
+                    resp.put("message", "Không thể parse dữ liệu JSON (null)!");
+                    return gson.toJson(resp);
+                }
+
+                if (dt.getKhachHangEmail() == null || dt.getTourId() == null) {
+                    res.status(400);
+                    resp.put("message", "Thiếu thông tin khách hàng hoặc mã tour!");
+                    return gson.toJson(resp);
+                }
+
+                // Tự sinh ID: DT001, DT002...
+                List<DatTour> existingTours = graph.getAll(hg.type(DatTour.class));
+                int nextId = 1;
+                for (DatTour existing : existingTours) {
+                    String existingId = existing.getId();
+                    if (existingId != null && existingId.startsWith("DT")) {
+                        try {
+                            int num = Integer.parseInt(existingId.substring(2));
+                            if (num >= nextId) nextId = num + 1;
+                        } catch (Exception ignored) {}
+                    }
+                }
+                String newId = String.format("DT%03d", nextId);
+                dt.setId(newId);
+
+                // Ngày đặt mặc định = hôm nay nếu null
+                if (dt.getNgayDat() == null) {
+                    dt.setNgayDat(LocalDate.now());
+                }
+
+                // Trạng thái mặc định
+                if (dt.getTrangThai() == null || dt.getTrangThai().isEmpty()) {
+                    dt.setTrangThai("Pending");
+                }
+
+                // Lưu vào HyperGraphDB
+                graph.add(dt);
+
+                // Trả về phản hồi
+                res.status(200);
+                resp.put("message", "Đã đặt tour thành công!");
+                resp.put("newId", newId);
+                resp.put("tourId", dt.getTourId());
+                resp.put("khachHangEmail", dt.getKhachHangEmail());
+                return gson.toJson(resp);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                resp.put("message", "Lỗi khi xử lý yêu cầu: " + e.getMessage());
+                return new Gson().toJson(resp);
+            }
         });
+
+
 
         // ========== API HOA DON ==========
         get("/api/hoadon", (req, res) -> {
@@ -633,14 +706,89 @@ public class ApiServer {
             return gson.toJson(list);
         });
 
-        post("/api/danhgia", (req, res) -> {
+        // post("/api/danhgia", (req, res) -> {
+        //     res.type("application/json");
+        //     DanhGia dg = gson.fromJson(req.body(), DanhGia.class);
+        //     graph.add(dg);
+        //     Map<String, String> resp = new HashMap<>();
+        //     resp.put("message", "Đã thêm đánh giá!");
+        //     return gson.toJson(resp);
+        // });
+
+        // API: Lấy danh sách đánh giá theo TourID
+        get("/api/tour/:id/danhgia", (req, res) -> {
             res.type("application/json");
-            DanhGia dg = gson.fromJson(req.body(), DanhGia.class);
-            graph.add(dg);
+            String tourId = req.params(":id");
+
+            // Lấy danh sách đánh giá và người dùng
+            List<DanhGia> danhGias = graph.getAll(hg.type(DanhGia.class));
+            List<User> users = graph.getAll(hg.type(User.class));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (DanhGia dg : danhGias) {
+                if (dg.getTourId() != null && dg.getTourId().equalsIgnoreCase(tourId)) {
+
+                    // Tìm thông tin người đánh giá
+                    User foundUser = null;
+                    for (User u : users) {
+                        if (u.getEmail().equalsIgnoreCase(dg.getKhachHangEmail())) {
+                            foundUser = u;
+                            break;
+                        }
+                    }
+
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", dg.getId());
+                    item.put("diemDanhGia", dg.getDiemDanhGia());
+                    item.put("binhLuan", dg.getBinhLuan());
+                    item.put("ngayDanhGia", dg.getNgayDanhGia().toString());
+
+                    if (foundUser != null) {
+                        Map<String, Object> userInfo = new HashMap<>();
+                        userInfo.put("ten", foundUser.getName());
+                        userInfo.put("email", foundUser.getEmail());
+                        item.put("nguoiDanhGia", userInfo);
+                    } else {
+                        item.put("nguoiDanhGia", null);
+                    }
+
+                    result.add(item);
+                }
+            }
+
+            return gson.toJson(result);
+        });
+
+        // Tạo đánh giá mới
+        post("/api/tour/:id/danhgia", (req, res) -> {
+            res.type("application/json");
+            String tourId = req.params(":id");
+
+            Map<String, Object> body = gson.fromJson(req.body(), Map.class);
+            String email = (String) body.get("email");
+            Double diem = (Double) body.get("diemDanhGia");
+            String binhLuan = (String) body.get("binhLuan");
+
+            // Tạo ID tự động
+            String newId = "DG" + System.currentTimeMillis();
+
+            DanhGia newDG = new DanhGia(
+                newId,
+                email,
+                tourId,
+                diem.intValue(),
+                binhLuan,
+                LocalDateTime.now()
+            );
+
+            graph.add(newDG);
+
             Map<String, String> resp = new HashMap<>();
-            resp.put("message", "Đã thêm đánh giá!");
+            resp.put("message", "Đã thêm đánh giá mới!");
             return gson.toJson(resp);
         });
+
 
         //=========================KẾT HỢP==============================
         // API: Lấy chi tiết 1 tour kèm thông tin nhà tổ chức
@@ -706,5 +854,3 @@ public class ApiServer {
         }));
     }
 }
-
-//GET /api/hell0 -> gửi về dòng Hello from Java
