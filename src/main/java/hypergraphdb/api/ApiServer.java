@@ -6,7 +6,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.hypergraphdb.HGHandle;
@@ -36,7 +35,14 @@ import static spark.Spark.put;
 public class ApiServer {
 
     private static final String DB_PATH = "db/mainDB";
-    private static final Gson gson = new Gson();
+    private static final Gson gson = new GsonBuilder()
+        .registerTypeAdapter(LocalDate.class, (JsonSerializer<LocalDate>) (src, type, ctx) -> new JsonPrimitive(src.toString()))
+        .registerTypeAdapter(LocalDate.class, (JsonDeserializer<LocalDate>) (json, type, ctx) -> LocalDate.parse(json.getAsString()))
+        .registerTypeAdapter(LocalDateTime.class, (JsonSerializer<LocalDateTime>) (src, type, ctx) -> new JsonPrimitive(src.toString()))
+        .registerTypeAdapter(LocalDateTime.class, (JsonDeserializer<LocalDateTime>) (json, type, ctx) -> LocalDateTime.parse(json.getAsString()))
+        .setPrettyPrinting()
+        .create();
+
 
     // Lưu user đăng nhập tạm thời
     private static User currentUser = null;
@@ -292,11 +298,11 @@ public class ApiServer {
 
         hoaDons.add(new HoaDon(
             "HD001",
-            "DT001",            
-            5000000,            
-            "MoMo",             
-            "Paid",            
-            LocalDateTime.of(2025, 11, 1, 10, 30)
+            "DT001",
+            5000000,
+            "MoMo",
+            "Paid",
+            "2025-11-01T10:30:00"
         ));
 
         hoaDons.add(new HoaDon(
@@ -305,7 +311,7 @@ public class ApiServer {
             12000000,
             "Card",
             "Unpaid",
-            LocalDateTime.of(2025, 11, 3, 14, 45)
+            "2025-11-03T14:45:00"
         ));
 
         hoaDons.add(new HoaDon(
@@ -314,7 +320,7 @@ public class ApiServer {
             7500000,
             "Cash",
             "Refunded",
-            LocalDateTime.of(2025, 11, 4, 9, 15)
+            "2025-11-04T09:15:00"
         ));
 
         hoaDons.add(new HoaDon(
@@ -323,7 +329,7 @@ public class ApiServer {
             15000000,
             "Card",
             "Paid",
-            LocalDateTime.of(2025, 10, 20, 16, 10)
+            "2025-10-20T16:10:00"
         ));
 
         hoaDons.add(new HoaDon(
@@ -332,13 +338,14 @@ public class ApiServer {
             9500000,
             "MoMo",
             "Unpaid",
-            LocalDateTime.of(2025, 11, 5, 11, 5)
+            "2025-11-05T11:05:00"
         ));
 
         for (HoaDon hd : hoaDons) {
             graph.add(hd);
         }
     }
+
 
     //seed Đánh giá
     public static void seedDanhGia(HyperGraph graph) {
@@ -619,12 +626,6 @@ public class ApiServer {
                 System.out.println("=== Body nhận được từ Laravel ===");
                 System.out.println(body);
 
-                // Khởi tạo Gson hỗ trợ LocalDate
-                Gson gson = new GsonBuilder()
-                    .registerTypeAdapter(LocalDate.class, (JsonDeserializer<LocalDate>) (json, type, ctx) -> LocalDate.parse(json.getAsString()))
-                    .registerTypeAdapter(LocalDate.class, (JsonSerializer<LocalDate>) (src, type, ctx) -> new JsonPrimitive(src.toString()))
-                    .setPrettyPrinting()
-                    .create();
 
                 // Parse JSON thành DatTour
                 DatTour dt = gson.fromJson(body, DatTour.class);
@@ -715,11 +716,6 @@ public class ApiServer {
 
                 // Trả về danh sách kết quả JSON
                 res.status(200);
-                Gson gson = new GsonBuilder()
-                        .registerTypeAdapter(LocalDate.class, (JsonSerializer<LocalDate>)
-                                (src, type, ctx) -> new JsonPrimitive(src.toString()))
-                        .setPrettyPrinting()
-                        .create();
 
                 return gson.toJson(userTours);
 
@@ -1005,50 +1001,83 @@ public class ApiServer {
                 String datTourId = req.params(":datTourId");
 
                 // Parse phương thức thanh toán từ body
-                Map<String, String> body = new Gson().fromJson(req.body(), Map.class);
+                Map<String, String> body = gson.fromJson(req.body(), Map.class);
                 String phuongThucThanhToan = body.getOrDefault("phuongThucThanhToan", "Cash");
 
-                // Tìm DatTour
-                DatTour datTour = graph.findOne(hg.and(hg.type(DatTour.class), hg.eq("id", datTourId)));
-                if (datTour == null) {
+                // ===== Lấy DatTour =====
+                HGHandle datTourHandle = graph.findOne(
+                    hg.and(hg.type(DatTour.class), hg.eq("id", datTourId))
+                );
+
+                if (datTourHandle == null) {
                     res.status(404);
                     resp.put("error", "Không tìm thấy đặt tour có ID: " + datTourId);
                     return gson.toJson(resp);
                 }
 
-                // Tìm Tour tương ứng để tính tiền
-                Tour tour = graph.findOne(hg.and(hg.type(Tour.class), hg.eq("id", datTour.getTourId())));
-                if (tour == null) {
+                DatTour datTour = (DatTour) graph.get(datTourHandle);
+
+                if (!datTour.getKhachHangEmail().equalsIgnoreCase(email)) {
+                    res.status(400);
+                    resp.put("error", "Email không khớp với đặt tour này!");
+                    return gson.toJson(resp);
+                }
+
+                // ===== Lấy Tour tương ứng =====
+                HGHandle tourHandle = graph.findOne(
+                    hg.and(hg.type(Tour.class), hg.eq("id", datTour.getTourId()))
+                );
+
+                if (tourHandle == null) {
                     res.status(404);
                     resp.put("error", "Không tìm thấy tour tương ứng với đặt tour này.");
                     return gson.toJson(resp);
                 }
 
+                Tour tour = (Tour) graph.get(tourHandle);
+
+                // Tính tổng tiền
                 double tongTien = tour.getGia() * datTour.getSoNguoi();
 
-                // Tạo hóa đơn mới
+                // ===== Tạo ID hóa đơn nối tiếp =====
+                List<HGHandle> allHoaDonHandles = graph.findAll(hg.type(HoaDon.class));
+                int maxId = 0;
+                for (HGHandle handle : allHoaDonHandles) {
+                    HoaDon hd = (HoaDon) graph.get(handle);
+                    String id = hd.getId(); // ví dụ: "HD002" hoặc UUID cũ
+                    if (id.startsWith("HD")) {
+                        try {
+                            int num = Integer.parseInt(id.substring(2)); // lấy phần số sau "HD"
+                            if (num > maxId) maxId = num;
+                        } catch (NumberFormatException e) {
+                            // bỏ qua nếu không phải số
+                        }
+                    }
+                }
+                String newHoaDonId = String.format("HD%03d", maxId + 1);
+
+                // ===== Tạo hóa đơn mới =====
                 HoaDon hoaDon = new HoaDon(
-                    UUID.randomUUID().toString(),
+                    newHoaDonId,
                     datTourId,
                     tongTien,
                     phuongThucThanhToan,
-                    "Paid",
-                    LocalDateTime.now()
+                    "Paid", // trạng thái thanh toán
+                    LocalDateTime.now().toString()
                 );
 
-                // Cập nhật trạng thái đặt tour
-                datTour.setTrangThai("Paid");
-
-                // Lưu vào database
+                // Lưu hóa đơn vào HyperGraphDB
                 graph.add(hoaDon);
-                graph.update(datTour);
 
+                // Trả về thông tin hóa đơn
                 resp.put("message", "Thanh toán thành công!");
                 resp.put("hoaDonId", hoaDon.getId());
+                resp.put("datTourId", datTourId);
                 resp.put("tongTien", tongTien);
                 resp.put("phuongThucThanhToan", phuongThucThanhToan);
                 resp.put("trangThai", "Paid");
 
+                res.status(200);
                 return gson.toJson(resp);
 
             } catch (Exception e) {
@@ -1058,6 +1087,11 @@ public class ApiServer {
                 return gson.toJson(resp);
             }
         });
+
+
+
+
+
 
         //==========================ĐÓNG SERVER=========================
         //Đóng DB khi tắt server

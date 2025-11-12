@@ -1,7 +1,6 @@
 package hypergraphdb.models;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 public class HoaDon implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -11,12 +10,12 @@ public class HoaDon implements Serializable {
     private double tongTien;
     private String phuongThucThanhToan; // MoMo, Card, Cash...
     private String trangThaiThanhToan; // Paid / Unpaid / Refunded
-    private LocalDateTime ngayThanhToan;
+    private String ngayThanhToan; // ISO 8601 string
 
     public HoaDon() {}
 
     public HoaDon(String id, String datTourId, double tongTien, String phuongThucThanhToan,
-                  String trangThaiThanhToan, LocalDateTime ngayThanhToan) {
+                  String trangThaiThanhToan, String ngayThanhToan) {
         this.id = id;
         this.datTourId = datTourId;
         this.tongTien = tongTien;
@@ -25,6 +24,7 @@ public class HoaDon implements Serializable {
         this.ngayThanhToan = ngayThanhToan;
     }
 
+    // Getter / Setter
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -40,11 +40,11 @@ public class HoaDon implements Serializable {
     public String getTrangThaiThanhToan() { return trangThaiThanhToan; }
     public void setTrangThaiThanhToan(String trangThaiThanhToan) { this.trangThaiThanhToan = trangThaiThanhToan; }
 
-    public LocalDateTime getNgayThanhToan() { return ngayThanhToan; }
-    public void setNgayThanhToan(LocalDateTime ngayThanhToan) { this.ngayThanhToan = ngayThanhToan; }
+    public String getNgayThanhToan() { return ngayThanhToan; }
+    public void setNgayThanhToan(String ngayThanhToan) { this.ngayThanhToan = ngayThanhToan; }
 
     @Override
     public String toString() {
-        return "HoaDon{id='" + id + "', datTourId='" + datTourId + "', tongTien=" + tongTien + "}";
+        return "HoaDon{id='" + id + "', datTourId='" + datTourId + "', tongTien=" + tongTien + ", ngayThanhToan='" + ngayThanhToan + "'}";
     }
 }
