@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
+import org.hypergraphdb.HGHandle;
 import org.hypergraphdb.HGQuery.hg;
 import org.hypergraphdb.HyperGraph;
 
@@ -28,6 +31,7 @@ import static spark.Spark.get;
 import static spark.Spark.options;
 import static spark.Spark.port;
 import static spark.Spark.post;
+import static spark.Spark.put;
 
 public class ApiServer {
 
@@ -681,6 +685,152 @@ public class ApiServer {
             }
         });
 
+        get("/api/dattour/:email", (req, res) -> {
+            res.type("application/json");
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                String email = req.params(":email");
+
+                if (email == null || email.isEmpty()) {
+                    res.status(400);
+                    resp.put("message", "Thiếu email người dùng!");
+                    return new Gson().toJson(resp);
+                }
+
+                // Lấy tất cả DatTour từ HyperGraphDB
+                List<DatTour> allTours = graph.getAll(hg.type(DatTour.class));
+
+                // Lọc theo email
+                List<DatTour> userTours = allTours.stream()
+                        .filter(dt -> dt.getKhachHangEmail() != null &&
+                                    dt.getKhachHangEmail().equalsIgnoreCase(email))
+                        .collect(Collectors.toList());
+
+                if (userTours.isEmpty()) {
+                    res.status(404);
+                    resp.put("message", "Không tìm thấy tour nào cho email: " + email);
+                    return new Gson().toJson(resp);
+                }
+
+                // Trả về danh sách kết quả JSON
+                res.status(200);
+                Gson gson = new GsonBuilder()
+                        .registerTypeAdapter(LocalDate.class, (JsonSerializer<LocalDate>)
+                                (src, type, ctx) -> new JsonPrimitive(src.toString()))
+                        .setPrettyPrinting()
+                        .create();
+
+                return gson.toJson(userTours);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                resp.put("message", "Lỗi khi lấy danh sách tour: " + e.getMessage());
+                return new Gson().toJson(resp);
+            }
+        });
+
+        // API đổi trạng thái thành Paid
+        put("/api/dattour/:email/:id/paid", (req, res) -> {
+            res.type("application/json");
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                String email = req.params(":email");
+                String id = req.params(":id");
+
+                if (email == null || email.isEmpty() || id == null || id.isEmpty()) {
+                    res.status(400);
+                    resp.put("message", "Thiếu email hoặc ID tour!");
+                    return new Gson().toJson(resp);
+                }
+
+                List<DatTour> allTours = graph.getAll(hg.type(DatTour.class));
+                DatTour found = null;
+                HGHandle handle = null;
+
+                for (DatTour dt : allTours) {
+                    if (dt.getId().equals(id) && dt.getKhachHangEmail().equalsIgnoreCase(email)) {
+                        found = dt;
+                        handle = graph.getHandle(dt);
+                        break;
+                    }
+                }
+
+                if (found == null || handle == null) {
+                    res.status(404);
+                    resp.put("message", "Không tìm thấy tour cho email: " + email + " với ID: " + id);
+                    return new Gson().toJson(resp);
+                }
+
+                found.setTrangThai("Paid");
+                graph.replace(handle, found);
+
+                res.status(200);
+                resp.put("message", "Đã cập nhật trạng thái thành Paid!");
+                resp.put("id", id);
+                resp.put("email", email);
+                return new Gson().toJson(resp);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                resp.put("message", "Lỗi khi cập nhật trạng thái: " + e.getMessage());
+                return new Gson().toJson(resp);
+            }
+        });
+
+        // API đổi trạng thái thành Cancelled
+        put("/api/dattour/:email/:id/cancelled", (req, res) -> {
+            res.type("application/json");
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                String email = req.params(":email");
+                String id = req.params(":id");
+
+                if (email == null || email.isEmpty() || id == null || id.isEmpty()) {
+                    res.status(400);
+                    resp.put("message", "Thiếu email hoặc ID tour!");
+                    return new Gson().toJson(resp);
+                }
+
+                List<DatTour> allTours = graph.getAll(hg.type(DatTour.class));
+                DatTour found = null;
+                HGHandle handle = null;
+
+                for (DatTour dt : allTours) {
+                    if (dt.getId().equals(id) && dt.getKhachHangEmail().equalsIgnoreCase(email)) {
+                        found = dt;
+                        handle = graph.getHandle(dt);
+                        break;
+                    }
+                }
+
+                if (found == null || handle == null) {
+                    res.status(404);
+                    resp.put("message", "Không tìm thấy tour cho email: " + email + " với ID: " + id);
+                    return new Gson().toJson(resp);
+                }
+
+                found.setTrangThai("Cancelled");
+                graph.replace(handle, found);
+
+                res.status(200);
+                resp.put("message", "Đã cập nhật trạng thái thành Cancelled!");
+                resp.put("id", id);
+                resp.put("email", email);
+                return new Gson().toJson(resp);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                resp.put("message", "Lỗi khi cập nhật trạng thái: " + e.getMessage());
+                return new Gson().toJson(resp);
+            }
+        });
+
 
 
         // ========== API HOA DON ==========
@@ -845,6 +995,69 @@ public class ApiServer {
             return gson.toJson(err);
         });
 
+        // API tạo một HOADON mới
+        post("/api/hoadon/:email/:datTourId/pay", (req, res) -> {
+            res.type("application/json");
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                String email = req.params(":email");
+                String datTourId = req.params(":datTourId");
+
+                // Parse phương thức thanh toán từ body
+                Map<String, String> body = new Gson().fromJson(req.body(), Map.class);
+                String phuongThucThanhToan = body.getOrDefault("phuongThucThanhToan", "Cash");
+
+                // Tìm DatTour
+                DatTour datTour = graph.findOne(hg.and(hg.type(DatTour.class), hg.eq("id", datTourId)));
+                if (datTour == null) {
+                    res.status(404);
+                    resp.put("error", "Không tìm thấy đặt tour có ID: " + datTourId);
+                    return gson.toJson(resp);
+                }
+
+                // Tìm Tour tương ứng để tính tiền
+                Tour tour = graph.findOne(hg.and(hg.type(Tour.class), hg.eq("id", datTour.getTourId())));
+                if (tour == null) {
+                    res.status(404);
+                    resp.put("error", "Không tìm thấy tour tương ứng với đặt tour này.");
+                    return gson.toJson(resp);
+                }
+
+                double tongTien = tour.getGia() * datTour.getSoNguoi();
+
+                // Tạo hóa đơn mới
+                HoaDon hoaDon = new HoaDon(
+                    UUID.randomUUID().toString(),
+                    datTourId,
+                    tongTien,
+                    phuongThucThanhToan,
+                    "Paid",
+                    LocalDateTime.now()
+                );
+
+                // Cập nhật trạng thái đặt tour
+                datTour.setTrangThai("Paid");
+
+                // Lưu vào database
+                graph.add(hoaDon);
+                graph.update(datTour);
+
+                resp.put("message", "Thanh toán thành công!");
+                resp.put("hoaDonId", hoaDon.getId());
+                resp.put("tongTien", tongTien);
+                resp.put("phuongThucThanhToan", phuongThucThanhToan);
+                resp.put("trangThai", "Paid");
+
+                return gson.toJson(resp);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                resp.put("error", "Lỗi trong quá trình tạo thanh toán: " + e.getMessage());
+                return gson.toJson(resp);
+            }
+        });
 
         //==========================ĐÓNG SERVER=========================
         //Đóng DB khi tắt server
