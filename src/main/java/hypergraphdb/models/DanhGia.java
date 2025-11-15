@@ -1,7 +1,6 @@
 package hypergraphdb.models;
 
 import java.io.Serializable;
-import java.time.LocalDateTime;
 
 public class DanhGia implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -11,11 +10,11 @@ public class DanhGia implements Serializable {
     private String tourId;
     private int diemDanhGia; // 1-5
     private String binhLuan;
-    private LocalDateTime ngayDanhGia;
+    private String ngayDanhGia; // Thay đổi kiểu từ LocalDateTime sang String
 
     public DanhGia() {}
 
-    public DanhGia(String id, String khachHangEmail, String tourId, int diemDanhGia, String binhLuan, LocalDateTime ngayDanhGia) {
+    public DanhGia(String id, String khachHangEmail, String tourId, int diemDanhGia, String binhLuan, String ngayDanhGia) {
         this.id = id;
         this.khachHangEmail = khachHangEmail;
         this.tourId = tourId;
@@ -39,11 +38,11 @@ public class DanhGia implements Serializable {
     public String getBinhLuan() { return binhLuan; }
     public void setBinhLuan(String binhLuan) { this.binhLuan = binhLuan; }
 
-    public LocalDateTime getNgayDanhGia() { return ngayDanhGia; }
-    public void setNgayDanhGia(LocalDateTime ngayDanhGia) { this.ngayDanhGia = ngayDanhGia; }
+    public String getNgayDanhGia() { return ngayDanhGia; }
+    public void setNgayDanhGia(String ngayDanhGia) { this.ngayDanhGia = ngayDanhGia; }
 
     @Override
     public String toString() {
-        return "DanhGia{id='" + id + "', tourId='" + tourId + "', diem=" + diemDanhGia + "}";
+        return "DanhGia{id='" + id + "', tourId='" + tourId + "', diem=" + diemDanhGia + ", ngayDanhGia='" + ngayDanhGia + "'}";
     }
 }
