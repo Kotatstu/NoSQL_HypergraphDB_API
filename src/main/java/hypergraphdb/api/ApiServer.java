@@ -1,5 +1,6 @@
 package hypergraphdb.api;
 
+import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -36,6 +37,7 @@ import static spark.Spark.put;
 public class ApiServer {
 
     private static final String DB_PATH = "db/mainDB";
+
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDate.class,
                     (JsonSerializer<LocalDate>) (src, type, ctx) -> new JsonPrimitive(src.toString()))
@@ -46,10 +48,19 @@ public class ApiServer {
             .registerTypeAdapter(LocalDateTime.class,
                     (JsonDeserializer<LocalDateTime>) (json, type, ctx) -> LocalDateTime.parse(json.getAsString()))
             .setPrettyPrinting()
+            .disableHtmlEscaping()
             .create();
 
     // Lưu user đăng nhập tạm thời
     private static User currentUser = null;
+
+    // Hàm hỗ trợ bỏ dấu tiếng khi tìm kiếm
+    public static String unaccent(String text) {
+        if (text == null) return "";
+        String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
+        return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
+                        .toLowerCase();
+    }
 
     // ========================= Các hàm seed dữ liệu ==========================
     // seed nhà tổ chức
@@ -417,7 +428,8 @@ public class ApiServer {
 
         // ========================TEST API==========================
         get("/api/hello", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, String> response = new HashMap<>();
             response.put("message", "Hello from Java API!");
             return new Gson().toJson(response);
@@ -426,7 +438,8 @@ public class ApiServer {
         // =========================USER==============================
         // POST
         post("/api/add", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             @SuppressWarnings("unchecked")
             Map<String, Object> data = new Gson().fromJson(req.body(), Map.class);
             String value = (String) data.get("value");
@@ -444,14 +457,17 @@ public class ApiServer {
 
         // API xem danh sách user
         get("/api/users", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
+
             List<User> users = graph.getAll(hg.type(User.class));
             return gson.toJson(users);
         });
 
         // API GET: Lấy thông tin người dùng theo email
         get("/api/user/:email", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String email = req.params(":email");
 
             // Lấy danh sách người dùng từ database
@@ -473,7 +489,8 @@ public class ApiServer {
 
         // API PUT: Cập nhật thông tin người dùng theo email
         put("/api/user/:email", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String email = req.params(":email");
 
             // Parse dữ liệu người dùng từ request body
@@ -516,7 +533,8 @@ public class ApiServer {
 
         // API DELETE: Xóa người dùng theo email
         delete("/api/user/:email", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String email = req.params(":email");
 
             // Lấy danh sách người dùng từ database
@@ -546,7 +564,8 @@ public class ApiServer {
 
         // API đăng ký
         post("/api/register", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> body = gson.fromJson(req.body(), Map.class);
             String name = (String) body.get("name");
             String email = (String) body.get("email");
@@ -573,7 +592,8 @@ public class ApiServer {
 
         // API đăng nhập
         post("/api/login", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> body = gson.fromJson(req.body(), Map.class);
             String email = (String) body.get("email");
             String password = (String) body.get("password");
@@ -603,7 +623,8 @@ public class ApiServer {
 
         // API lấy user hiện tại
         get("/api/currentUser", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             if (currentUser != null) {
                 Map<String, Object> resp = new HashMap<>();
                 resp.put("loggedIn", true);
@@ -633,13 +654,15 @@ public class ApiServer {
 
         // ========== API TOUR ==========
         get("/api/tours", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             List<Tour> tours = graph.getAll(hg.type(Tour.class));
             return gson.toJson(tours);
         });
 
         post("/api/tours", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Tour tour = gson.fromJson(req.body(), Tour.class);
             graph.add(tour);
             Map<String, String> resp = new HashMap<>();
@@ -649,7 +672,8 @@ public class ApiServer {
 
         // Lấy tour theo ID
         get("/api/tours/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
 
             // Lấy ID từ URL
             String id = req.params(":id");
@@ -686,7 +710,8 @@ public class ApiServer {
 
         // Cập nhật thông tin Tour
         put("/api/tours/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Parse thông tin Tour từ request body
@@ -740,7 +765,8 @@ public class ApiServer {
 
         // Xóa tour theo ID
         delete("/api/tours/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Tìm tour theo ID
@@ -770,15 +796,20 @@ public class ApiServer {
             }
         });
 
+        // Tìm kiếm theo tên tour
+        
+
         // ========== API DIA DIEM ==========
         get("/api/diadiem", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             List<DiaDiem> list = graph.getAll(hg.type(DiaDiem.class));
             return gson.toJson(list);
         });
 
         post("/api/diadiem", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             DiaDiem dd = gson.fromJson(req.body(), DiaDiem.class);
             graph.add(dd);
             Map<String, String> resp = new HashMap<>();
@@ -788,7 +819,8 @@ public class ApiServer {
 
         // Thêm endpoint GET cho địa điểm theo ID
         get("/api/diadiem/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
 
             String id = req.params(":id"); // Lấy ID từ đường dẫn
 
@@ -818,7 +850,8 @@ public class ApiServer {
 
         // API cập nhật địa điểm theo ID
         put("/api/diadiem/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Parse thông tin Địa Điểm từ request body
@@ -856,7 +889,8 @@ public class ApiServer {
         });
 
         delete("/api/diadiem/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Tìm địa điểm theo ID
@@ -888,13 +922,15 @@ public class ApiServer {
 
         // ========== API NHA TO CHUC ==========
         get("/api/nhatochuc", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             List<NhaToChuc> list = graph.getAll(hg.type(NhaToChuc.class));
             return gson.toJson(list);
         });
 
         post("/api/nhatochuc", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             NhaToChuc ntc = gson.fromJson(req.body(), NhaToChuc.class);
             graph.add(ntc);
             Map<String, String> resp = new HashMap<>();
@@ -904,7 +940,8 @@ public class ApiServer {
 
         // Thêm endpoint GET cho nhà tổ chức theo ID
         get("/api/nhatochuc/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
 
             String id = req.params(":id"); // Lấy ID từ đường dẫn
 
@@ -934,7 +971,8 @@ public class ApiServer {
 
         // API cập nhật nhà tổ chức theo ID
         put("/api/nhatochuc/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
             // Parse thông tin Nhà Tổ Chức từ request body
             NhaToChuc updatedNhaToChuc = gson.fromJson(req.body(), NhaToChuc.class);
@@ -976,7 +1014,8 @@ public class ApiServer {
 
         // Xóa nhà tổ chức theo ID
         delete("/api/nhatochuc/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Tìm nhà tổ chức theo ID
@@ -1008,13 +1047,15 @@ public class ApiServer {
 
         // ========== API DAT TOUR ==========
         get("/api/dattour", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             List<DatTour> list = graph.getAll(hg.type(DatTour.class));
             return gson.toJson(list);
         });
 
         post("/api/dattour", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> resp = new HashMap<>();
 
             try {
@@ -1094,7 +1135,8 @@ public class ApiServer {
         });
 
         get("/api/dattour/:email", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> resp = new HashMap<>();
 
             try {
@@ -1136,7 +1178,8 @@ public class ApiServer {
 
         // API đổi trạng thái thành Paid
         put("/api/dattour/:email/:id/paid", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> resp = new HashMap<>();
 
             try {
@@ -1186,7 +1229,8 @@ public class ApiServer {
 
         // API đổi trạng thái thành Cancelled
         put("/api/dattour/:email/:id/cancelled", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> resp = new HashMap<>();
 
             try {
@@ -1236,7 +1280,8 @@ public class ApiServer {
 
         // Lấy đặt tour theo ID
         get("/api/dattour/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Lấy danh sách các đặt tour
@@ -1257,7 +1302,8 @@ public class ApiServer {
         });
 
         put("/api/dattour/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Parse thông tin đặt tour từ request body
@@ -1309,7 +1355,8 @@ public class ApiServer {
 
         // Xóa đặt tour theo ID
         delete("/api/dattour/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Tìm đặt tour theo ID
@@ -1337,13 +1384,15 @@ public class ApiServer {
 
         // ========== API HOA DON ==========
         get("/api/hoadon", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             List<HoaDon> list = graph.getAll(hg.type(HoaDon.class));
             return gson.toJson(list);
         });
 
         post("/api/hoadon", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             HoaDon hd = gson.fromJson(req.body(), HoaDon.class);
             graph.add(hd);
             Map<String, String> resp = new HashMap<>();
@@ -1353,7 +1402,8 @@ public class ApiServer {
 
         // Lấy hóa đơn theo ID
         get("/api/hoadon/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id"); // Lấy ID từ URL
 
             // Lấy danh sách hóa đơn
@@ -1379,7 +1429,8 @@ public class ApiServer {
 
         // Cập nhật hóa đơn theo ID
         put("/api/hoadon/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Parse thông tin hóa đơn từ request body
@@ -1423,7 +1474,8 @@ public class ApiServer {
 
         // Xóa hóa đơn theo ID
         delete("/api/hoadon/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Tìm hóa đơn theo ID
@@ -1454,13 +1506,15 @@ public class ApiServer {
 
         // ========== API DANH GIA ==========
         get("/api/danhgia", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             List<DanhGia> list = graph.getAll(hg.type(DanhGia.class));
             return gson.toJson(list);
         });
 
         // post("/api/danhgia", (req, res) -> {
-        // res.type("application/json");
+        // res.type("application/json; charset=UTF-8");
+        // res.raw().setCharacterEncoding("UTF-8");
         // DanhGia dg = gson.fromJson(req.body(), DanhGia.class);
         // graph.add(dg);
         // Map<String, String> resp = new HashMap<>();
@@ -1470,7 +1524,8 @@ public class ApiServer {
 
         // API: Lấy danh sách đánh giá theo TourID
         get("/api/tour/:id/danhgia", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String tourId = req.params(":id");
 
             // Lấy danh sách đánh giá và người dùng
@@ -1515,7 +1570,8 @@ public class ApiServer {
 
         // Tạo đánh giá mới
         post("/api/tour/:id/danhgia", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String tourId = req.params(":id");
 
             // Đọc dữ liệu từ request body
@@ -1565,7 +1621,8 @@ public class ApiServer {
 
         // API cập nhật đánh giá theo ID
         put("/api/danhgia/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Parse thông tin đánh giá từ request body
@@ -1608,7 +1665,8 @@ public class ApiServer {
 
         // Lấy đánh giá theo ID
         get("/api/danhgia/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id"); // Lấy ID từ URL
 
             // Lấy danh sách đánh giá
@@ -1638,7 +1696,8 @@ public class ApiServer {
 
         // Cập nhật đánh giá theo ID
         put("/api/danhgia/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id"); // Lấy ID từ URL
 
             // Parse thông tin đánh giá từ request body
@@ -1681,7 +1740,8 @@ public class ApiServer {
 
         // API xóa đánh giá theo ID
         delete("/api/danhgia/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Tìm kiếm và xóa đánh giá
@@ -1714,7 +1774,8 @@ public class ApiServer {
         // =========================KẾT HỢP==============================
         // API: Lấy chi tiết 1 tour kèm thông tin nhà tổ chức
         get("/api/tour/:id", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String id = req.params(":id");
 
             // Lấy danh sách tour và nhà tổ chức
@@ -1768,7 +1829,8 @@ public class ApiServer {
 
         // API tạo một HOADON mới
         post("/api/hoadon/:email/:datTourId/pay", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             Map<String, Object> resp = new HashMap<>();
 
             try {
@@ -1863,7 +1925,8 @@ public class ApiServer {
 
         // API lấy danh sách hóa đơn cơ bản của một người dùng theo email
         get("/api/hoadon/:email", (req, res) -> {
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
             String email = req.params(":email");
 
             // Lấy danh sách hóa đơn từ database
@@ -1925,7 +1988,8 @@ public class ApiServer {
                 totalRevenue += amount;
             }
 
-            res.type("application/json");
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
 
             // Trả về JSON đơn giản
             Map<String, Double> result = new HashMap<>();
