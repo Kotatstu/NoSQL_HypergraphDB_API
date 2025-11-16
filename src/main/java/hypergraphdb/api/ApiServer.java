@@ -56,7 +56,8 @@ public class ApiServer {
 
     // Hàm hỗ trợ bỏ dấu tiếng khi tìm kiếm
     public static String unaccent(String text) {
-        if (text == null) return "";
+        if (text == null)
+            return "";
         return Normalizer.normalize(text, Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .replaceAll("đ", "d")
@@ -817,12 +818,12 @@ public class ApiServer {
             List<Tour> tours = graph.getAll(hg.type(Tour.class));
 
             List<Tour> result = tours.stream()
-                .filter(t -> t.getTenTour() != null)       // tránh null
-                .filter(t -> {
-                    String title = unaccent(t.getTenTour().toLowerCase());
-                    return title.contains(normalizedKeyword);
-                })
-                .collect(Collectors.toList());
+                    .filter(t -> t.getTenTour() != null) // tránh null
+                    .filter(t -> {
+                        String title = unaccent(t.getTenTour().toLowerCase());
+                        return title.contains(normalizedKeyword);
+                    })
+                    .collect(Collectors.toList());
 
             resp.put("status", "success");
             resp.put("count", result.size());
@@ -978,7 +979,8 @@ public class ApiServer {
             String id = req.params(":id"); // Lấy ID từ đường dẫn
 
             // Tìm nhà tổ chức theo ID trong cơ sở dữ liệu
-            List<NhaToChuc> nhaToChucs = graph.getAll(hg.type(NhaToChuc.class)); // Lấy tất cả nhà tổ chức từ cơ sở dữ liệu
+            List<NhaToChuc> nhaToChucs = graph.getAll(hg.type(NhaToChuc.class)); // Lấy tất cả nhà tổ chức từ cơ sở dữ
+                                                                                 // liệu
 
             NhaToChuc foundNhaToChuc = null;
 
@@ -1695,81 +1697,6 @@ public class ApiServer {
             return gson.toJson(response);
         });
 
-        // Lấy đánh giá theo ID
-        get("/api/danhgia/:id", (req, res) -> {
-            res.type("application/json; charset=UTF-8");
-            res.raw().setCharacterEncoding("UTF-8");
-            String id = req.params(":id"); // Lấy ID từ URL
-
-            // Lấy danh sách đánh giá
-            List<DanhGia> danhGias = graph.getAll(hg.type(DanhGia.class));
-
-            DanhGia foundDanhGia = null;
-
-            // Tìm đánh giá theo ID
-            for (DanhGia danhGia : danhGias) {
-                if (danhGia.getId() != null && danhGia.getId().equals(id)) {
-                    foundDanhGia = danhGia; // Nếu tìm thấy
-                    break;
-                }
-            }
-
-            if (foundDanhGia != null) {
-                // Trả về đánh giá tìm thấy dưới dạng JSON
-                return gson.toJson(foundDanhGia);
-            } else {
-                // Trả về lỗi nếu không tìm thấy
-                res.status(404);
-                Map<String, String> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Không tìm thấy đánh giá với ID: " + id);
-                return gson.toJson(errorResponse);
-            }
-        });
-
-        // Cập nhật đánh giá theo ID
-        put("/api/danhgia/:id", (req, res) -> {
-            res.type("application/json; charset=UTF-8");
-            res.raw().setCharacterEncoding("UTF-8");
-            String id = req.params(":id"); // Lấy ID từ URL
-
-            // Parse thông tin đánh giá từ request body
-            DanhGia updatedDanhGia = gson.fromJson(req.body(), DanhGia.class);
-
-            // Lấy danh sách đánh giá và tìm đánh giá theo ID
-            List<DanhGia> danhGias = graph.getAll(hg.type(DanhGia.class));
-            boolean isDanhGiaFound = false;
-
-            for (DanhGia danhGia : danhGias) {
-                if (danhGia.getId() != null && danhGia.getId().equals(id)) {
-                    isDanhGiaFound = true;
-
-                    // Cập nhật các trường thông tin nếu có
-                    if (updatedDanhGia.getKhachHangEmail() != null)
-                        danhGia.setKhachHangEmail(updatedDanhGia.getKhachHangEmail());
-                    if (updatedDanhGia.getTourId() != null)
-                        danhGia.setTourId(updatedDanhGia.getTourId());
-                    if (updatedDanhGia.getDiemDanhGia() > 0)
-                        danhGia.setDiemDanhGia(updatedDanhGia.getDiemDanhGia());
-                    if (updatedDanhGia.getBinhLuan() != null)
-                        danhGia.setBinhLuan(updatedDanhGia.getBinhLuan());
-                    if (updatedDanhGia.getNgayDanhGia() != null)
-                        danhGia.setNgayDanhGia(updatedDanhGia.getNgayDanhGia());
-
-                    // Lưu lại thông tin đã cập nhật
-                    graph.update(danhGia);
-
-                    Map<String, String> response = new HashMap<>();
-                    response.put("message", "Cập nhật đánh giá thành công!");
-                    return gson.toJson(response);
-                }
-            }
-
-            // Nếu không tìm thấy đánh giá với ID tương ứng
-            Map<String, String> response = new HashMap<>();
-            response.put("message", "Đánh giá không tồn tại!");
-            return gson.toJson(response);
-        });
-
         // API xóa đánh giá theo ID
         delete("/api/danhgia/:id", (req, res) -> {
             res.type("application/json; charset=UTF-8");
@@ -2028,6 +1955,177 @@ public class ApiServer {
             result.put("totalRevenue", totalRevenue);
 
             return gson.toJson(result);
+        });
+
+        // API tạo hóa đơn thanh toán
+        post("/api/hoadon/:email/:datTourId/pay", (req, res) -> {
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
+
+            String email = req.params(":email");
+            String datTourId = req.params(":datTourId");
+
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                // 1. Tìm đặt tour
+                List<DatTour> datTours = graph.getAll(hg.type(DatTour.class));
+                DatTour found = null;
+                for (DatTour dt : datTours) {
+                    if (dt.getId().equals(datTourId) &&
+                            dt.getKhachHangEmail().equalsIgnoreCase(email)) {
+                        found = dt;
+                        break;
+                    }
+                }
+
+                if (found == null) {
+                    res.status(404);
+                    resp.put("message", "Không tìm thấy đặt tour!");
+                    return gson.toJson(resp);
+                }
+
+                // 2. Tạo ID hóa đơn mới
+                List<HoaDon> hoaDons = graph.getAll(hg.type(HoaDon.class));
+                int nextId = hoaDons.size() + 1;
+                String newId = String.format("HD%03d", nextId);
+
+                // 3. Tạo hóa đơn
+                HoaDon newHD = new HoaDon(
+                        newId,
+                        datTourId,
+                        found.getSoNguoi() * 1000000, // bạn tự thay giá
+                        "MoMo",
+                        "Paid",
+                        LocalDateTime.now().toString());
+
+                graph.add(newHD);
+
+                // 4. Cập nhật trạng thái DatTour
+                found.setTrangThai("Paid");
+                graph.update(found);
+
+                resp.put("message", "Thanh toán thành công!");
+                resp.put("hoaDonId", newId);
+                return gson.toJson(resp);
+
+            } catch (Exception e) {
+                res.status(500);
+                resp.put("message", "Lỗi server: " + e.getMessage());
+                return gson.toJson(resp);
+            }
+        });
+
+        get("/api/hoadon/user/:email", (req, res) -> {
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
+
+            String email = req.params(":email");
+
+            List<HoaDon> hoaDons = graph.getAll(hg.type(HoaDon.class));
+            List<DatTour> datTours = graph.getAll(hg.type(DatTour.class));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (HoaDon hd : hoaDons) {
+                for (DatTour dt : datTours) {
+                    if (dt.getId().equals(hd.getDatTourId()) &&
+                            dt.getKhachHangEmail().equalsIgnoreCase(email)) {
+
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("hoaDonId", hd.getId());
+                        item.put("tongTien", hd.getTongTien());
+                        item.put("phuongThuc", hd.getPhuongThucThanhToan());
+                        item.put("trangThai", hd.getTrangThaiThanhToan());
+                        item.put("ngayThanhToan", hd.getNgayThanhToan());
+                        item.put("datTourId", dt.getId());
+                        item.put("soNguoi", dt.getSoNguoi());
+
+                        result.add(item);
+                    }
+                }
+            }
+
+            return gson.toJson(result);
+        });
+
+        // API: Lấy danh sách đặt tour "Pending" cho 1 user (email)
+        get("/api/dattour/user/:email/pending", (req, res) -> {
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
+
+            String email = req.params(":email");
+            Map<String, Object> resp = new HashMap<>();
+
+            try {
+                if (email == null || email.trim().isEmpty()) {
+                    res.status(400);
+                    resp.put("message", "Thiếu email người dùng!");
+                    return gson.toJson(resp);
+                }
+
+                // Lấy tất cả DatTour và Tour
+                List<DatTour> allDatTours = graph.getAll(hg.type(DatTour.class));
+                List<Tour> allTours = graph.getAll(hg.type(Tour.class));
+
+                List<Map<String, Object>> result = new ArrayList<>();
+
+                for (DatTour dt : allDatTours) {
+                    if (dt.getKhachHangEmail() == null)
+                        continue;
+
+                    boolean sameEmail = dt.getKhachHangEmail().equalsIgnoreCase(email);
+
+                    // chấp nhận 2 dạng trạng thái phổ biến: "Pending" hoặc "Chờ thanh toán"
+                    String trangThai = dt.getTrangThai() == null ? "" : dt.getTrangThai().trim();
+                    boolean isPending = trangThai.equalsIgnoreCase("Pending")
+                            || trangThai.equalsIgnoreCase("Chờ thanh toán")
+                            || trangThai.equalsIgnoreCase("Cho thanh toan")
+                            || trangThai.equalsIgnoreCase("ChoThanhToan");
+
+                    if (sameEmail && isPending) {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("id", dt.getId());
+                        item.put("tourId", dt.getTourId());
+                        item.put("soNguoi", dt.getSoNguoi());
+                        item.put("ngayDat", dt.getNgayDat());
+                        item.put("trangThai", dt.getTrangThai());
+
+                        // Tìm thông tin tour để lấy tenTour và gia (nếu có)
+                        Tour foundTour = null;
+                        for (Tour t : allTours) {
+                            if (t.getId() != null && t.getId().equalsIgnoreCase(dt.getTourId())) {
+                                foundTour = t;
+                                break;
+                            }
+                        }
+                        if (foundTour != null) {
+                            item.put("tourName", foundTour.getTenTour());
+                            // Nếu giá tour là >0 thì tính tổng, nếu không có thì trả null
+                            if (foundTour.getGia() > 0) {
+                                long tong = (long) foundTour.getGia() * Math.max(1, dt.getSoNguoi());
+                                item.put("tongTien", tong);
+                            } else {
+                                item.put("tongTien", 0);
+                            }
+                        } else {
+                            item.put("tourName", "Không xác định");
+                            item.put("tongTien", 0);
+                        }
+
+                        result.add(item);
+                    }
+                }
+
+                // Trả về kết quả
+                return gson.toJson(result);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                res.status(500);
+                resp.put("message", "Lỗi server: " + e.getMessage());
+                return gson.toJson(resp);
+            }
         });
 
         // ==========================ĐÓNG SERVER=========================
