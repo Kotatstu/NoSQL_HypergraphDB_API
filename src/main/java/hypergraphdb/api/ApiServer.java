@@ -57,9 +57,11 @@ public class ApiServer {
     // Hàm hỗ trợ bỏ dấu tiếng khi tìm kiếm
     public static String unaccent(String text) {
         if (text == null) return "";
-        String normalized = Normalizer.normalize(text, Normalizer.Form.NFD);
-        return normalized.replaceAll("\\p{InCombiningDiacriticalMarks}+", "")
-                        .toLowerCase();
+        return Normalizer.normalize(text, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replaceAll("đ", "d")
+                .replaceAll("Đ", "D")
+                .toLowerCase();
     }
 
     // ========================= Các hàm seed dữ liệu ==========================
@@ -797,7 +799,37 @@ public class ApiServer {
         });
 
         // Tìm kiếm theo tên tour
-        
+        get("/api/search", (req, res) -> {
+            res.type("application/json; charset=UTF-8");
+            res.raw().setCharacterEncoding("UTF-8");
+
+            String keyword = req.queryParams("name");
+            Map<String, Object> resp = new HashMap<>();
+
+            if (keyword == null || keyword.trim().isEmpty()) {
+                resp.put("status", "error");
+                resp.put("message", "Thiếu tham số tìm kiếm 'name'");
+                return gson.toJson(resp);
+            }
+
+            String normalizedKeyword = unaccent(keyword.trim().toLowerCase());
+
+            List<Tour> tours = graph.getAll(hg.type(Tour.class));
+
+            List<Tour> result = tours.stream()
+                .filter(t -> t.getTenTour() != null)       // tránh null
+                .filter(t -> {
+                    String title = unaccent(t.getTenTour().toLowerCase());
+                    return title.contains(normalizedKeyword);
+                })
+                .collect(Collectors.toList());
+
+            resp.put("status", "success");
+            resp.put("count", result.size());
+            resp.put("data", result);
+
+            return gson.toJson(resp);
+        });
 
         // ========== API DIA DIEM ==========
         get("/api/diadiem", (req, res) -> {
