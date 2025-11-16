@@ -1,7 +1,6 @@
 package hypergraphdb.models;
 
 import java.io.Serializable;
-import java.time.LocalDate;
 
 public class DatTour implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -10,14 +9,14 @@ public class DatTour implements Serializable {
     private String khachHangEmail; // tham chiếu tới User bằng email hoặc id
     private String tourId;
     private int soNguoi;
-    private LocalDate ngayDat;
-    private LocalDate ngayKhoiHanh;
+    private String ngayDat; // Thay LocalDate thành String
+    private String ngayKhoiHanh; // Thay LocalDate thành String
     private String trangThai; // Pending / Paid / Cancelled
 
     public DatTour() {}
 
     public DatTour(String id, String khachHangEmail, String tourId, int soNguoi,
-                   LocalDate ngayDat, LocalDate ngayKhoiHanh, String trangThai) {
+                   String ngayDat, String ngayKhoiHanh, String trangThai) {
         this.id = id;
         this.khachHangEmail = khachHangEmail;
         this.tourId = tourId;
@@ -39,11 +38,11 @@ public class DatTour implements Serializable {
     public int getSoNguoi() { return soNguoi; }
     public void setSoNguoi(int soNguoi) { this.soNguoi = soNguoi; }
 
-    public LocalDate getNgayDat() { return ngayDat; }
-    public void setNgayDat(LocalDate ngayDat) { this.ngayDat = ngayDat; }
+    public String getNgayDat() { return ngayDat; }
+    public void setNgayDat(String ngayDat) { this.ngayDat = ngayDat; }
 
-    public LocalDate getNgayKhoiHanh() { return ngayKhoiHanh; }
-    public void setNgayKhoiHanh(LocalDate ngayKhoiHanh) { this.ngayKhoiHanh = ngayKhoiHanh; }
+    public String getNgayKhoiHanh() { return ngayKhoiHanh; }
+    public void setNgayKhoiHanh(String ngayKhoiHanh) { this.ngayKhoiHanh = ngayKhoiHanh; }
 
     public String getTrangThai() { return trangThai; }
     public void setTrangThai(String trangThai) { this.trangThai = trangThai; }
